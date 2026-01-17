@@ -8,7 +8,7 @@ do
 	local shipList = { "OrangeShip", "GreenShip" }
 
 	local cannonGroups = {
-		C1 = { names = { "SmallCannon", "BigCannon", "Flat Cannon", "MainCannon2", "Mortar2" }, args = { 7782023531 } },
+		C1 = { names = { "SmallCannon", "BigCannon", "Flat Cannon", "MainCannon2", "Mortar2", "MountedRocket" }, args = { 7782023531 } },
 		C2 = { names = { "Turret", "Double Turret", "SmallTurret", "Single Deck Turret" }, args = { true } }
 	}
 
@@ -32,15 +32,33 @@ do
 		end
 	end
 
-	local function bRebuildCache()
+	local function bFindFireRemote(cannonInst)
+		if not cannonInst or not cannonInst:IsDescendantOf(workspace) then
+			return nil
+		end
+
+		local direct = cannonInst:FindFirstChild("FireCannon")
+		if direct and direct:IsA("RemoteEvent") then
+			return direct
+		end
+
+		local found = cannonInst:FindFirstChild("FireCannon", true)
+		if found and found:IsA("RemoteEvent") then
+			return found
+		end
+
+		return nil
+	end
+
+	local function cRebuildCache()
 		local list = {}
 		local seen = {}
 
 		for _, inst in ipairs(workspace:GetDescendants()) do
 			local groupKey = cannonToGroup[inst.Name]
 			if groupKey then
-				local fire = inst:FindFirstChild("FireCannon")
-				if fire and fire:IsA("RemoteEvent") then
+				local fire = bFindFireRemote(inst)
+				if fire then
 					local p = inst.Parent
 					while p and p ~= workspace do
 						if shipSet[p.Name] then
@@ -59,7 +77,7 @@ do
 		cached = list
 	end
 
-	local function cPruneCache()
+	local function dPruneCache()
 		local alive = {}
 		for _, item in ipairs(cached) do
 			local r = item.r
@@ -69,12 +87,12 @@ do
 		end
 		cached = alive
 		if #cached == 0 then
-			bRebuildCache()
+			cRebuildCache()
 		end
 	end
 
-	local function dFireAll()
-		cPruneCache()
+	local function eFireAll()
+		dPruneCache()
 		for _, item in ipairs(cached) do
 			local r = item.r
 			if r and r.Parent and r:IsDescendantOf(workspace) then
@@ -87,12 +105,12 @@ do
 
 	local gui, btn
 
-	local function eSetEnabled(v)
+	local function fSetEnabled(v)
 		enabled = v
 		btn.Text = v and "funny: ON" or "funny: OFF"
 	end
 
-	local function fMakeGui()
+	local function gMakeGui()
 		gui = Instance.new("ScreenGui")
 		gui.Name = "test"
 		gui.ResetOnSpawn = false
@@ -115,13 +133,13 @@ do
 		corner.Parent = btn
 	end
 
-	local function gHookButton()
+	local function hHookButton()
 		local dragging = false
 		local dragStart
 		local startPos
 
 		btn.Activated:Connect(function()
-			eSetEnabled(not enabled)
+			fSetEnabled(not enabled)
 		end)
 
 		btn.InputBegan:Connect(function(input)
@@ -146,11 +164,11 @@ do
 		end)
 	end
 
-	local function hLoop()
+	local function iLoop()
 		task.spawn(function()
 			while true do
 				if enabled then
-					dFireAll()
+					eFireAll()
 				end
 				task.wait(0.05)
 			end
@@ -158,8 +176,8 @@ do
 	end
 
 	aInitMaps()
-	fMakeGui()
-	gHookButton()
-	bRebuildCache()
-	hLoop()
+	gMakeGui()
+	hHookButton()
+	cRebuildCache()
+	iLoop()
 end
