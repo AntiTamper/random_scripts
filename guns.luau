@@ -33,28 +33,14 @@ do
 		}
 	}
 
-	local shipSet = {}
-	local cannonToGroup = {}
 	local enabled = false
 	local cached = {}
+	local cannonToGroup = {}
 	local gui, btn
 
-	local function aInit()
-		iMakeGui()
-		jHookButton()
-		cBuildCannonMap()
-		eRebuildCache()
-		kLoop()
-
-		if player:GetPropertyChangedSignal("Team") then
-			player:GetPropertyChangedSignal("Team"):Connect(function()
-				cached = {}
-			end)
-		end
-	end
-
-	local function bAllowedShipSet()
+	local function aAllowedShipSet()
 		local set = {}
+
 		if not SelfTeamOnly then
 			for _, n in ipairs(shipList) do
 				set[n] = true
@@ -71,25 +57,27 @@ do
 			set["OrangeShip"] = true
 			set["GreenShip"] = true
 		else
-			set["OrangeShip"] = true
-			set["GreenShip"] = true
+			for _, n in ipairs(shipList) do
+				set[n] = true
+			end
 		end
 
 		return set
 	end
 
-	local function cBuildCannonMap()
-		cannonToGroup = {}
+	local function bBuildCannonMap()
+		local map = {}
 		for groupKey, group in pairs(cannonGroups) do
 			for cannonName, isOn in pairs(group.guns) do
 				if isOn then
-					cannonToGroup[cannonName] = groupKey
+					map[cannonName] = groupKey
 				end
 			end
 		end
+		cannonToGroup = map
 	end
 
-	local function dFindFireRemote(cannonInst)
+	local function cFindFireRemote(cannonInst)
 		if not cannonInst or not cannonInst:IsDescendantOf(workspace) then
 			return nil
 		end
@@ -99,30 +87,33 @@ do
 			return direct
 		end
 
-		local found = cannonInst:FindFirstChild("FireCannon", true)
-		if found and found:IsA("RemoteEvent") then
-			return found
+		local deep = cannonInst:FindFirstChild("FireCannon", true)
+		if deep and deep:IsA("RemoteEvent") then
+			return deep
 		end
 
 		return nil
 	end
 
-	local function eRebuildCache()
+	local function dRebuildCache()
 		local list = {}
 		local seen = {}
-		shipSet = bAllowedShipSet()
+		local shipSet = aAllowedShipSet()
 
 		for _, inst in ipairs(workspace:GetDescendants()) do
 			local groupKey = cannonToGroup[inst.Name]
 			if groupKey then
-				local fire = dFindFireRemote(inst)
+				local fire = cFindFireRemote(inst)
 				if fire then
 					local p = inst.Parent
 					while p and p ~= workspace do
 						if shipSet[p.Name] then
 							if not seen[fire] then
 								seen[fire] = true
-								list[#list + 1] = { r = fire, a = cannonGroups[groupKey].args }
+								local group = cannonGroups[groupKey]
+								if group and group.args then
+									list[#list + 1] = { r = fire, a = group.args }
+								end
 							end
 							break
 						end
@@ -135,7 +126,7 @@ do
 		cached = list
 	end
 
-	local function fPruneCache()
+	local function ePruneCache()
 		local alive = {}
 		for _, item in ipairs(cached) do
 			local r = item.r
@@ -145,12 +136,12 @@ do
 		end
 		cached = alive
 		if #cached == 0 then
-			eRebuildCache()
+			dRebuildCache()
 		end
 	end
 
-	local function gFireAll()
-		fPruneCache()
+	local function fFireAll()
+		ePruneCache()
 		for _, item in ipairs(cached) do
 			local r = item.r
 			if r and r.Parent and r:IsDescendantOf(workspace) then
@@ -161,12 +152,7 @@ do
 		end
 	end
 
-	local function hSetEnabled(v)
-		enabled = v
-		btn.Text = v and "funny: ON" or "funny: OFF"
-	end
-
-	function iMakeGui()
+	local function gMakeGui()
 		gui = Instance.new("ScreenGui")
 		gui.Name = "test"
 		gui.ResetOnSpawn = false
@@ -189,13 +175,13 @@ do
 		corner.Parent = btn
 	end
 
-	function jHookButton()
+	local function hHookButton()
 		local dragging = false
 		local dragStart
 		local startPos
 
 		btn.Activated:Connect(function()
-			hSetEnabled(not enabled)
+			jSetEnabled(not enabled)
 		end)
 
 		btn.InputBegan:Connect(function(input)
@@ -220,16 +206,33 @@ do
 		end)
 	end
 
-	function kLoop()
+	local function iLoop()
 		task.spawn(function()
 			while true do
 				if enabled then
-					gFireAll()
+					fFireAll()
 				end
 				task.wait(0.05)
 			end
 		end)
 	end
 
-	aInit()
-end
+	function jSetEnabled(v)
+		enabled = v
+		if btn then
+			btn.Text = v and "funny: ON" or "funny: OFF"
+		end
+	end
+
+	local function kInit()
+		bBuildCannonMap()
+		gMakeGui()
+		hHookButton()
+		dRebuildCache()
+		iLoop()
+
+		player:GetPropertyChangedSignal("Team"):Connect(function()
+			if SelfTeamOnly then
+				cached = {}
+			end
+		end)
