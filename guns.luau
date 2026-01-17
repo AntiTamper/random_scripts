@@ -16,9 +16,9 @@ do
 
 	local q = {
 		C1 = "0.1",
-		C2 = "0.01",
-		C2Move = "0",
-		F3 = "0.5"
+		C2 = "0",
+		C1Move = "5",
+		F3 = "1"
 	}
 
 	local r = {
@@ -32,7 +32,8 @@ do
 				["MountedRocket"] = true
 			},
 			remotes = {
-				FireCannon = { args = { "7782023531" } }
+				FireCannon = { args = { "7782023531" } },
+				MoveCannon = { args = { "left", "right", "up", "down" } }
 			}
 		},
 		C2 = {
@@ -60,21 +61,6 @@ do
 		local x = tonumber(v)
 		if x ~= nil then return x end
 		return v
-	end
-
-	local function v(w)
-		return math.floor(w * 1e9 + (w >= 0 and 0.5 or -0.5)) / 1e9
-	end
-
-	local function w(x, y)
-		return v(x + (math.random() * (y - x)))
-	end
-
-	local function x(y)
-		local z = Vector3.new(w(-3, 3), w(-1, 1), w(-3, 3))
-		local aa = y + z
-		if aa.Magnitude > 0 then aa = aa.Unit end
-		return { aa.X, aa.Y, aa.Z }
 	end
 
 	local function y()
@@ -134,7 +120,7 @@ do
 				end
 				if ah then
 					local ai = aa(ae, "FireCannon")
-					local aj = (af == "C2") and aa(ae, "MoveCannon") or nil
+					local aj = aa(ae, "MoveCannon")
 					if ai or aj then
 						ac[#ac + 1] = { group = af, fire = ai, move = aj }
 					end
@@ -184,13 +170,13 @@ do
 	end
 
 	local function ag()
-		for _, ah in ipairs(ad()) do
-			if ah.group == "C2" and ah.move then
-				local ai = ah.move.Parent
-				if ai and ai:IsA("BasePart") then
-					local aj = x(ai.CFrame.LookVector)
-					pcall(function() ah.move:FireServer(unpack(aj)) end)
-				end
+		local ah = r.C1.remotes.MoveCannon.args
+		for _, ai in ipairs(ad()) do
+			if ai.group == "C1" and ai.move then
+				local aj = ah[math.random(1, #ah)]
+				pcall(function()
+					ai.move:FireServer(aj, false)
+				end)
 			end
 		end
 	end
@@ -307,7 +293,7 @@ do
 		task.spawn(function()
 			while true do
 				if f then ag() end
-				task.wait(q.C2Move)
+				task.wait(q.C1Move)
 			end
 		end)
 
