@@ -118,13 +118,24 @@ do
 		corner.Parent = button
 	end
 
-	local function e()
+	local function e(v)
+		enabled = v
+		if button then
+			button.Text = v and "funny: ON" or "funny: OFF"
+		end
+	end
+
+	local function f()
+		if not button then
+			return
+		end
+
 		local dragging = false
 		local dragStart
 		local startPos
 
 		button.Activated:Connect(function()
-			f(not enabled)
+			e(not enabled)
 		end)
 
 		button.InputBegan:Connect(function(input)
@@ -147,13 +158,6 @@ do
 			local delta = input.Position - dragStart
 			button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 		end)
-	end
-
-	local function f(v)
-		enabled = v
-		if button then
-			button.Text = v and "funny: ON" or "funny: OFF"
-		end
 	end
 
 	local function g()
@@ -227,7 +231,7 @@ do
 	local function k()
 		b()
 		d()
-		e()
+		f()
 		g()
 		j()
 
