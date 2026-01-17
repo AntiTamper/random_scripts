@@ -15,9 +15,9 @@ do
 	local p = { "OrangeShip", "GreenShip" }
 
 	local q = {
-		C1 = "0.1",
+		C1 = "0.09",
 		C2 = "0.1",
-		C1Move = "0.25",
+		C1Move = "0.2",
 		F3 = "0.5"
 	}
 
@@ -57,6 +57,7 @@ do
 
 	local s = 0
 	local t = 2
+	local rng = Random.new()
 
 	local function u(v)
 		if typeof(v) ~= "string" then return v end
@@ -170,8 +171,8 @@ do
 		local cfg = r.C1.remotes.MoveCannon
 		for _, ah in ipairs(ad()) do
 			if ah.group == "C1" and ah.move then
-				local dir = cfg.args1[math.random(#cfg.args1)]
-				local bool = cfg.args2[math.random(#cfg.args2)]
+				local dir = cfg.args1[rng:NextInteger(1, #cfg.args1)]
+				local bool = cfg.args2[rng:NextInteger(1, #cfg.args2)]
 				pcall(function() ah.move:FireServer(dir, bool) end)
 			end
 		end
@@ -287,7 +288,6 @@ do
 	end
 
 	local function am()
-		math.randomseed(os.clock() * 1e6)
 		for an, ao in pairs(q) do q[an] = u(ao) end
 		z()
 		aj()
