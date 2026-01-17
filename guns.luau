@@ -16,8 +16,8 @@ do
 
 	local q = {
 		C1 = "0.1",
-		C2 = "0.05",
-		C1Move = "0.1",
+		C2 = "0.1",
+		C1Move = "0.25",
 		F3 = "0.5"
 	}
 
@@ -208,15 +208,10 @@ do
 		k = Instance.new("Frame")
 		k.Size = UDim2.fromOffset(150, 120)
 		k.Position = UDim2.new(0.06, 0, 0.55, 0)
-		k.BackgroundColor3 = Color3.fromRGB(0,0,0)
-		k.BackgroundTransparency = 0.25
+		k.BackgroundColor3 = Color3.new(0,0,0)
+		k.BackgroundTransparency = 0.6
 		k.Parent = j
 		Instance.new("UICorner", k).CornerRadius = UDim.new(0,14)
-
-		local st = Instance.new("UIStroke", k)
-		st.Color = Color3.fromRGB(0,255,255)
-		st.Thickness = 1.5
-		st.Transparency = 0.3
 
 		local lay = Instance.new("UIListLayout", k)
 		lay.Padding = UDim.new(0,8)
@@ -236,19 +231,46 @@ do
 			btn.TextScaled = true
 			btn.Font = Enum.Font.GothamBold
 			btn.TextColor3 = Color3.new(1,1,1)
-			btn.BackgroundTransparency = 0.15
+			btn.BackgroundTransparency = 0.3
 			btn.BackgroundColor3 = Color3.fromRGB(255,70,70)
 			btn.Parent = k
 			Instance.new("UICorner", btn).CornerRadius = UDim.new(0,10)
-			local s2 = Instance.new("UIStroke", btn)
-			s2.Color = Color3.fromRGB(0,255,255)
-			s2.Transparency = 0.4
 			return btn
 		end
 
 		l = mk("test1")
 		m = mk("test2")
 		n = mk("test3")
+
+		local dragging = false
+		local dragStart
+		local startPos
+
+		k.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = k.Position
+			end
+		end)
+
+		k.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+			end
+		end)
+
+		b.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			local delta = input.Position - dragStart
+			k.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end)
 	end
 
 	local function ak()
