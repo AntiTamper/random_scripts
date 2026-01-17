@@ -13,10 +13,10 @@ do
 		C1 = {
 			args = { 7782023531 },
 			guns = {
-				["SmallCannon"] = true,
-				["BigCannon"] = true,
-				["Flat Cannon"] = true,
-				["MainCannon2"] = true,
+				["SmallCannon"] = false,
+				["BigCannon"] = false,
+				["Flat Cannon"] = false,
+				["MainCannon2"] = false,
 				["Mortar2"] = true,
 				["MountedRocket"] = true
 			}
