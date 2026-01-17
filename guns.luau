@@ -1,27 +1,32 @@
+
 do
+
 	local Players = game:GetService("Players")
 	local UIS = game:GetService("UserInputService")
 
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
-	local enabled1 = false
-	local enabled2 = false
 
+	local enabled1, enabled2, enabled3 = false, false, false
 	local cached = {}
 	local cannonToGroup = {}
 
-	local gui, frame, button1, button2
+
+	local gui, frame, button1, button2, button3
+
 
 	local SelfTeamOnly = false
-
 	local shipList = { "OrangeShip", "GreenShip" }
+
 
 	local delays = {
 		C1 = "0.1",
 		C2 = "0",
-		C2Move = "0"
+		C2Move = "5",
+		Log = "1"
 	}
+
 
 	local cannonGroups = {
 		C1 = {
@@ -42,20 +47,56 @@ do
 				["Turret"] = true,
 				["Double Turret"] = true,
 				["SmallTurret"] = true,
-				["Single Deck Cannon"] = true,
+				["Single  Deck Cannon"] = true,
 				["Double Deck Cannon"] = true
 			},
 			remotes = {
-				FireCannon = { args = { "true" } },
-				MoveCannon = { args = "RANDOM3" }
+				FireCannon = { args = { "true" } }
 			}
 		}
 	}
 
+
 	local lastScan = 0
 	local scanEvery = 2
 
-	local function a()
+	local function c(v)
+		if typeof(v) ~= "string" then
+			return v
+		end
+		local s = string.lower(v)
+		if s == "true" then return true end
+		if s == "false" then return false end
+		local n = tonumber(v)
+		if n ~= nil then return n end
+		return v
+	end
+
+
+	local function round(n)
+		return math.floor(n * 1e9 + (n >= 0 and 0.5 or -0.5)) / 1e9
+	end
+
+	local function rand(minv, maxv)
+		return round(minv + (math.random() * (maxv - minv)))
+	end
+
+	-- drunk teleporting, LookVector-biased
+	local function drunkVector(look)
+		local drunk = Vector3.new(
+			rand(-3, 3),
+			rand(-1, 1),
+			rand(-3, 3)
+		)
+		local dir = look + drunk
+		if dir.Magnitude > 0 then
+			dir = dir.Unit
+		end
+		return { dir.X, dir.Y, dir.Z }
+	end
+
+
+	local function getShipSet()
 		local set = {}
 
 		if not SelfTeamOnly then
@@ -82,11 +123,11 @@ do
 		return set
 	end
 
-	local function b()
+	local function rebuildCannonMap()
 		local map = {}
 		for groupKey, group in pairs(cannonGroups) do
-			for cannonName, isOn in pairs(group.guns) do
-				if isOn then
+			for cannonName, on in pairs(group.guns) do
+				if on then
 					map[cannonName] = groupKey
 				end
 			end
@@ -94,37 +135,8 @@ do
 		cannonToGroup = map
 	end
 
-	local function c(v)
-		if typeof(v) ~= "string" then
-			return v
-		end
-		local s = string.lower(v)
-		if s == "true" then
-			return true
-		end
-		if s == "false" then
-			return false
-		end
-		local n = tonumber(v)
-		if n ~= nil then
-			return n
-		end
-		return v
-	end
 
-	local function d(n)
-		return math.floor(n * 1e9 + (n >= 0 and 0.5 or -0.5)) / 1e9
-	end
-
-	local function e(minv, maxv)
-		return d(minv + (math.random() * (maxv - minv)))
-	end
-
-	local function f()
-		return { e(-3, 3), e(-1, 1), e(-3, 3) }
-	end
-
-	local function g(inst, remoteName)
+	local function findRemote(inst, remoteName)
 		if not inst or not inst:IsDescendantOf(workspace) then
 			return nil
 		end
@@ -142,9 +154,9 @@ do
 		return nil
 	end
 
-	local function h()
+	local function scanCannons()
 		local list = {}
-		local shipSet = a()
+		local shipSet = getShipSet()
 
 		for _, inst in ipairs(workspace:GetDescendants()) do
 			local groupKey = cannonToGroup[inst.Name]
@@ -160,10 +172,14 @@ do
 				end
 
 				if ok then
-					local fire = g(inst, "FireCannon")
-					local move = (groupKey == "C2") and g(inst, "MoveCannon") or nil
+					local fire = findRemote(inst, "FireCannon")
+					local move = (groupKey == "C2") and findRemote(inst, "MoveCannon") or nil
 					if fire or move then
-						list[#list + 1] = { group = groupKey, fire = fire, move = move }
+						list[#list + 1] = {
+							group = groupKey,
+							fire = fire,
+							move = move
+						}
 					end
 				end
 			end
@@ -173,42 +189,34 @@ do
 		lastScan = os.clock()
 	end
 
-	local function i()
+	local function refreshCache()
 		local alive = {}
 		for _, item in ipairs(cached) do
-			local keep = false
-			if item.fire and item.fire.Parent and item.fire:IsDescendantOf(workspace) then
-				keep = true
-			end
-			if item.move and item.move.Parent and item.move:IsDescendantOf(workspace) then
-				keep = true
-			end
-			if keep then
+			if (item.fire and item.fire:IsDescendantOf(workspace))
+			or (item.move and item.move:IsDescendantOf(workspace)) then
 				alive[#alive + 1] = item
 			end
 		end
 		cached = alive
 
-		local now = os.clock()
-		if #cached == 0 or (now - lastScan) >= scanEvery then
-			h()
+		if #cached == 0 or (os.clock() - lastScan) >= scanEvery then
+			scanCannons()
 		end
 	end
 
-	local function j()
-		i()
+	local function getItems()
+		refreshCache()
 		return cached
 	end
 
-	local function k()
-		local items = j()
+	local function fireC1()
 		local spec = cannonGroups.C1.remotes.FireCannon
 		local args = {}
-		for idx, v in ipairs(spec.args) do
-			args[idx] = c(v)
+		for i, v in ipairs(spec.args) do
+			args[i] = c(v)
 		end
 
-		for _, item in ipairs(items) do
+		for _, item in ipairs(getItems()) do
 			if item.group == "C1" and item.fire then
 				pcall(function()
 					item.fire:FireServer(unpack(args))
@@ -217,15 +225,14 @@ do
 		end
 	end
 
-	local function l()
-		local items = j()
+	local function fireC2()
 		local spec = cannonGroups.C2.remotes.FireCannon
 		local args = {}
-		for idx, v in ipairs(spec.args) do
-			args[idx] = c(v)
+		for i, v in ipairs(spec.args) do
+			args[i] = c(v)
 		end
 
-		for _, item in ipairs(items) do
+		for _, item in ipairs(getItems()) do
 			if item.group == "C2" and item.fire then
 				pcall(function()
 					item.fire:FireServer(unpack(args))
@@ -234,106 +241,122 @@ do
 		end
 	end
 
-	local function m()
-		local items = j()
-		for _, item in ipairs(items) do
+	local function moveC2()
+		for _, item in ipairs(getItems()) do
 			if item.group == "C2" and item.move then
-				local args = f()
-				pcall(function()
-					item.move:FireServer(unpack(args))
-				end)
+				local cannon = item.move.Parent
+				if cannon and cannon:IsA("BasePart") then
+					local args = drunkVector(cannon.CFrame.LookVector)
+					pcall(function()
+						item.move:FireServer(unpack(args))
+					end)
+				end
 			end
 		end
 	end
 
-	local function n(v1, v2)
-		if v1 ~= nil then enabled1 = v1 end
-		if v2 ~= nil then enabled2 = v2 end
-		if button1 then button1.Text = enabled1 and "test1: ON" or "test1: OFF" end
-		if button2 then button2.Text = enabled2 and "test2: ON" or "test2: OFF" end
+
+	local function logStopControls()
+		local shipSet = getShipSet()
+
+		for shipName in pairs(shipSet) do
+			local ship = workspace:FindFirstChild(shipName)
+			if not ship or not ship:IsDescendantOf(workspace) then
+				continue
+			end
+
+			local pieces = ship:FindFirstChild("Pieces")
+			if not pieces then
+				continue
+			end
+
+			local stop = pieces:FindFirstChild("StopControl")
+			if not stop then
+				continue
+			end
+
+			local cd = stop:FindFirstChildOfClass("ClickDetector")
+			if not cd then
+				continue
+			end
+
+			pcall(function()
+				log(cd)
+			end)
+		end
 	end
 
-	local function o()
+
+	local function updateButtons()
+		if button1 then button1.Text = enabled1 and "test1: ON" or "test1: OFF" end
+		if button2 then button2.Text = enabled2 and "test2: ON" or "test2: OFF" end
+		if button3 then button3.Text = enabled3 and "test3: ON" or "test3: OFF" end
+	end
+
+	local function buildUI()
 		gui = Instance.new("ScreenGui")
-		gui.Name = "test"
 		gui.ResetOnSpawn = false
 		gui.Parent = playerGui
 
 		frame = Instance.new("Frame")
-		frame.Name = "test"
-		frame.Size = UDim2.fromOffset(140, 74)
+		frame.Size = UDim2.fromOffset(140, 108)
 		frame.Position = UDim2.new(0.06, 0, 0.55, 0)
 		frame.BackgroundColor3 = Color3.new(0, 0, 0)
 		frame.BackgroundTransparency = 0.5
 		frame.Parent = gui
+		Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 
-		local frameCorner = Instance.new("UICorner")
-		frameCorner.Name = "test"
-		frameCorner.CornerRadius = UDim.new(0, 12)
-		frameCorner.Parent = frame
-
-		local layout = Instance.new("UIListLayout")
-		layout.Name = "test"
-		layout.FillDirection = Enum.FillDirection.Vertical
+		local layout = Instance.new("UIListLayout", frame)
+		layout.Padding = UDim.new(0, 6)
 		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		layout.VerticalAlignment = Enum.VerticalAlignment.Center
-		layout.Padding = UDim.new(0, 6)
-		layout.Parent = frame
 
-		local pad = Instance.new("UIPadding")
-		pad.Name = "test"
+		local pad = Instance.new("UIPadding", frame)
 		pad.PaddingTop = UDim.new(0, 7)
 		pad.PaddingBottom = UDim.new(0, 7)
 		pad.PaddingLeft = UDim.new(0, 7)
 		pad.PaddingRight = UDim.new(0, 7)
-		pad.Parent = frame
 
-		button1 = Instance.new("TextButton")
-		button1.Name = "test"
-		button1.Size = UDim2.new(1, 0, 0, 26)
-		button1.BackgroundColor3 = Color3.new(0, 0, 0)
-		button1.BackgroundTransparency = 0.35
-		button1.TextColor3 = Color3.new(1, 1, 1)
-		button1.TextScaled = true
-		button1.Text = "test1: OFF"
-		button1.Parent = frame
+		local function makeButton(text)
+			local b = Instance.new("TextButton")
+			b.Size = UDim2.new(1, 0, 0, 26)
+			b.BackgroundColor3 = Color3.new(0, 0, 0)
+			b.BackgroundTransparency = 0.35
+			b.TextColor3 = Color3.new(1, 1, 1)
+			b.TextScaled = true
+			b.Text = text
+			b.Parent = frame
+			Instance.new("UICorner", b).CornerRadius = UDim.new(0, 10)
+			return b
+		end
 
-		local c1 = Instance.new("UICorner")
-		c1.Name = "test"
-		c1.CornerRadius = UDim.new(0, 10)
-		c1.Parent = button1
-
-		button2 = Instance.new("TextButton")
-		button2.Name = "test"
-		button2.Size = UDim2.new(1, 0, 0, 26)
-		button2.BackgroundColor3 = Color3.new(0, 0, 0)
-		button2.BackgroundTransparency = 0.35
-		button2.TextColor3 = Color3.new(1, 1, 1)
-		button2.TextScaled = true
-		button2.Text = "test2: OFF"
-		button2.Parent = frame
-
-		local c2 = Instance.new("UICorner")
-		c2.Name = "test"
-		c2.CornerRadius = UDim.new(0, 10)
-		c2.Parent = button2
+		button1 = makeButton("test1: OFF")
+		button2 = makeButton("test2: OFF")
+		button3 = makeButton("test3: OFF")
 	end
 
-	local function p()
+	local function wireUI()
 		button1.Activated:Connect(function()
-			n(not enabled1, nil)
+			enabled1 = not enabled1
+			updateButtons()
 		end)
 
 		button2.Activated:Connect(function()
-			n(nil, not enabled2)
+			enabled2 = not enabled2
+			updateButtons()
 		end)
 
-		local dragging = false
-		local dragStart
-		local startPos
+		button3.Activated:Connect(function()
+			enabled3 = not enabled3
+			updateButtons()
+		end)
+
+
+		local dragging, dragStart, startPos = false, nil, nil
 
 		frame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = true
 				dragStart = input.Position
 				startPos = frame.Position
@@ -341,75 +364,73 @@ do
 		end)
 
 		frame.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = false
 			end
 		end)
 
 		UIS.InputChanged:Connect(function(input)
 			if not dragging then return end
-			if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+			if input.UserInputType ~= Enum.UserInputType.MouseMovement
+			and input.UserInputType ~= Enum.UserInputType.Touch then
+				return
+			end
 			local delta = input.Position - dragStart
-			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			frame.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
 		end)
 	end
 
-	local function q()
+
+	local function startLoops()
 		task.spawn(function()
 			while true do
-				if enabled1 then
-					k()
-				end
+				if enabled1 then fireC1() end
 				task.wait(delays.C1)
 			end
 		end)
-	end
 
-	local function r()
 		task.spawn(function()
 			while true do
-				if enabled1 then
-					l()
-				end
+				if enabled1 then fireC2() end
 				task.wait(delays.C2)
 			end
 		end)
-	end
 
-	local function s()
 		task.spawn(function()
 			while true do
-				if enabled2 then
-					m()
-				end
+				if enabled2 then moveC2() end
 				task.wait(delays.C2Move)
 			end
 		end)
-	end
 
-	local function t()
-		math.randomseed(os.clock() * 1e6)
-
-		for key, value in pairs(delays) do
-			delays[key] = tonumber(value)
-		end
-
-		b()
-		o()
-		p()
-		h()
-		n(false, false)
-
-		player:GetPropertyChangedSignal("Team"):Connect(function()
-			if SelfTeamOnly then
-				cached = {}
+		task.spawn(function()
+			while true do
+				if enabled3 then logStopControls() end
+				task.wait(delays.Log)
 			end
 		end)
-
-		q()
-		r()
-		s()
 	end
 
-	t()
+	local function init()
+		math.randomseed(os.clock() * 1e6)
+
+		for k, v in pairs(delays) do
+			delays[k] = c(v)
+		end
+
+		rebuildCannonMap()
+		buildUI()
+		wireUI()
+		scanCannons()
+		updateButtons()
+		startLoops()
+	end
+
+	init()
 end
