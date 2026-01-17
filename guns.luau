@@ -187,7 +187,7 @@ do
 					local am = al:FindFirstChild("StopControl")
 					if am then
 						local an = am:FindFirstChildOfClass("ClickDetector")
-						if an then pcall(function() Log(an) end) end
+						if an then pcall(function() fireclickdetector(an) end) end
 					end
 				end
 			end
