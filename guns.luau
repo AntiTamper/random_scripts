@@ -102,13 +102,11 @@ do
 	end
 
 	local function d(n)
-		return math.floor(n * 1e6 + (n >= 0 and 0.5 or -0.5)) / 1e6
+		return math.floor(n * 1e9 + (n >= 0 and 0.5 or -0.5)) / 1e9
 	end
 
 	local function e()
-		local base = (math.random(0, 1) == 0) and -1 or 1
-		local offset = (math.random() * 2) - 1
-		return d(base + offset)
+		return d((math.random() * 2) - 1)
 	end
 
 	local function f()
@@ -149,11 +147,11 @@ do
 				end
 				if ok then
 					local group = cannonGroups[groupKey]
-					local fire = group and group.remotes and group.remotes.FireCannon and g(inst, "FireCannon") or nil
-					local move = (groupKey == "C2" and group and group.remotes and group.remotes.MoveCannon) and g(inst, "MoveCannon") or nil
+					local fire = (group and group.remotes and group.remotes.FireCannon) and g(inst, "FireCannon") or nil
+					local move = (groupKey == "C2") and g(inst, "MoveCannon") or nil
 
 					if fire or move then
-						local key = (fire or move)
+						local key = fire or move
 						if not seen[key] then
 							seen[key] = true
 							list[#list + 1] = { group = groupKey, fire = fire, move = move }
@@ -208,16 +206,12 @@ do
 
 		if enabled2 then
 			for _, item in ipairs(cached) do
-				if item.group == "C2" then
-					local group = cannonGroups.C2
-					local spec = group and group.remotes and group.remotes.MoveCannon
-					local r = item.move
-					if r and spec then
-						local args = f()
-						pcall(function()
-							r:FireServer(unpack(args))
-						end)
-					end
+				if item.group == "C2" and item.move then
+					local args = f()
+					pcall(function()
+						item.move:FireServer(unpack(args))
+					end)
+					task.wait()
 				end
 			end
 		end
