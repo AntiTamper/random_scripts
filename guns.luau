@@ -29,12 +29,15 @@ do
 				["Flat Cannon"] = true,
 				["MainCannon2"] = true,
 				["Mortar2"] = true,
-                ["Single  Deck Cannon"] = true,
+				["Single  Deck Cannon"] = true,
 				["MountedRocket"] = true
 			},
 			remotes = {
 				FireCannon = { args = { "7782023531" } },
-				MoveCannon = { args = {"left", "right","up", "down" } }
+				MoveCannon = {
+					args1 = { "left", "right", "up", "down" },
+					args2 = { true, false }
+				}
 			}
 		},
 		C2 = {
@@ -44,7 +47,7 @@ do
 				["SmallTurret"] = true,
 				["Single  Deck Cannon"] = true,
 				["Double Deck Cannon"] = true,
-                ["DoubleMG"] = true
+				["DoubleMG"] = true
 			},
 			remotes = {
 				FireCannon = { args = { "true" } }
@@ -150,34 +153,35 @@ do
 	end
 
 	local function ae()
-		local af = r.C1.remotes.FireCannon
-		local ag = {}
-		for ah, ai in ipairs(af.args) do ag[ah] = u(ai) end
-		for _, aj in ipairs(ad()) do
-			if aj.group == "C1" and aj.fire then
-				pcall(function() aj.fire:FireServer(unpack(ag)) end)
+		local af = r.C1.remotes.FireCannon.args
+		for _, ag in ipairs(ad()) do
+			if ag.group == "C1" and ag.fire then
+				pcall(function()
+					ag.fire:FireServer(u(af[1]))
+				end)
 			end
 		end
 	end
 
 	local function af()
-		local ag = r.C2.remotes.FireCannon
-		local ah = {}
-		for ai, aj in ipairs(ag.args) do ah[ai] = u(aj) end
-		for _, ak in ipairs(ad()) do
-			if ak.group == "C2" and ak.fire then
-				pcall(function() ak.fire:FireServer(unpack(ah)) end)
+		local ag = r.C2.remotes.FireCannon.args
+		for _, ah in ipairs(ad()) do
+			if ah.group == "C2" and ah.fire then
+				pcall(function()
+					ah.fire:FireServer(u(ag[1]))
+				end)
 			end
 		end
 	end
 
 	local function ag()
-		local ah = r.C1.remotes.MoveCannon.args
-		for _, ai in ipairs(ad()) do
-			if ai.group == "C1" and ai.move then
-				local aj = ah[math.random(1, #ah)]
+		local cfg = r.C1.remotes.MoveCannon
+		for _, ah in ipairs(ad()) do
+			if ah.group == "C1" and ah.move then
+				local dir = cfg.args1[math.random(#cfg.args1)]
+				local bool = cfg.args2[math.random(#cfg.args2)]
 				pcall(function()
-					ai.move:FireServer(aj, false)
+					ah.move:FireServer(dir, bool)
 				end)
 			end
 		end
@@ -187,13 +191,13 @@ do
 		local ai = y()
 		for aj in pairs(ai) do
 			local ak = workspace:FindFirstChild(aj)
-			if ak and ak:IsDescendantOf(workspace) then
+			if ak then
 				local al = ak:FindFirstChild("Pieces")
 				if al then
 					local am = al:FindFirstChild("StopControl")
 					if am then
 						local an = am:FindFirstChildOfClass("ClickDetector")
-						if an then pcall(function() fireclickdetector(an) end) end
+						if an then pcall(function() Log(an) end) end
 					end
 				end
 			end
@@ -207,104 +211,41 @@ do
 	end
 
 	local function aj()
-		j = Instance.new("ScreenGui")
+		j = Instance.new("ScreenGui", d)
 		j.ResetOnSpawn = false
-		j.Parent = d
 
-		k = Instance.new("Frame")
+		k = Instance.new("Frame", j)
 		k.Size = UDim2.fromOffset(140, 108)
 		k.Position = UDim2.new(0.06, 0, 0.55, 0)
-		k.BackgroundColor3 = Color3.new(0, 0, 0)
 		k.BackgroundTransparency = 0.5
-		k.Parent = j
 		Instance.new("UICorner", k).CornerRadius = UDim.new(0, 12)
 
-		local ak = Instance.new("UIListLayout", k)
-		ak.Padding = UDim.new(0, 6)
-		ak.HorizontalAlignment = Enum.HorizontalAlignment.Center
-		ak.VerticalAlignment = Enum.VerticalAlignment.Center
-
-		local al = Instance.new("UIPadding", k)
-		al.PaddingTop = UDim.new(0, 7)
-		al.PaddingBottom = UDim.new(0, 7)
-		al.PaddingLeft = UDim.new(0, 7)
-		al.PaddingRight = UDim.new(0, 7)
-
-		local function am(an)
-			local ao = Instance.new("TextButton")
-			ao.Size = UDim2.new(1, 0, 0, 26)
-			ao.BackgroundColor3 = Color3.new(0, 0, 0)
-			ao.BackgroundTransparency = 0.35
-			ao.TextColor3 = Color3.new(1, 1, 1)
-			ao.TextScaled = true
-			ao.Text = an
-			ao.Parent = k
-			Instance.new("UICorner", ao).CornerRadius = UDim.new(0, 10)
-			return ao
+		local function mk(txt)
+			local btn = Instance.new("TextButton", k)
+			btn.Size = UDim2.new(1, 0, 0, 26)
+			btn.BackgroundTransparency = 0.35
+			btn.TextScaled = true
+			btn.Text = txt
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+			return btn
 		end
 
-		l = am("test1: OFF")
-		m = am("test2: OFF")
-		n = am("test3: OFF")
+		l = mk("test1: OFF")
+		m = mk("test2: OFF")
+		n = mk("test3: OFF")
 	end
 
 	local function ak()
 		l.Activated:Connect(function() e = not e ai() end)
 		m.Activated:Connect(function() f = not f ai() end)
 		n.Activated:Connect(function() g = not g ai() end)
-
-		local al, am, an = false, nil, nil
-
-		k.InputBegan:Connect(function(ao)
-			if ao.UserInputType == Enum.UserInputType.MouseButton1 or ao.UserInputType == Enum.UserInputType.Touch then
-				al = true
-				am = ao.Position
-				an = k.Position
-			end
-		end)
-
-		k.InputEnded:Connect(function(ao)
-			if ao.UserInputType == Enum.UserInputType.MouseButton1 or ao.UserInputType == Enum.UserInputType.Touch then
-				al = false
-			end
-		end)
-
-		b.InputChanged:Connect(function(ao)
-			if not al then return end
-			if ao.UserInputType ~= Enum.UserInputType.MouseMovement and ao.UserInputType ~= Enum.UserInputType.Touch then return end
-			local ap = ao.Position - am
-			k.Position = UDim2.new(an.X.Scale, an.X.Offset + ap.X, an.Y.Scale, an.Y.Offset + ap.Y)
-		end)
 	end
 
 	local function al()
-		task.spawn(function()
-			while true do
-				if e then ae() end
-				task.wait(q.C1)
-			end
-		end)
-
-		task.spawn(function()
-			while true do
-				if e then af() end
-				task.wait(q.C2)
-			end
-		end)
-
-		task.spawn(function()
-			while true do
-				if f then ag() end
-				task.wait(q.C1Move)
-			end
-		end)
-
-		task.spawn(function()
-			while true do
-				if g then ah() end
-				task.wait(q.F3)
-			end
-		end)
+		task.spawn(function() while true do if e then ae() end task.wait(q.C1) end end)
+		task.spawn(function() while true do if e then af() end task.wait(q.C2) end end)
+		task.spawn(function() while true do if f then ag() end task.wait(q.C1Move) end end)
+		task.spawn(function() while true do if g then ah() end task.wait(q.F3) end end)
 	end
 
 	local function am()
