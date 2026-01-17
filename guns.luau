@@ -5,7 +5,7 @@ do
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
-	local SelfTeamOnly = false
+	local SelfTeamOnly = true
 
 	local shipList = { "OrangeShip", "GreenShip" }
 
@@ -13,10 +13,10 @@ do
 		C1 = {
 			args = { 7782023531 },
 			guns = {
-				["SmallCannon"] = false,
-				["BigCannon"] = false,
-				["Flat Cannon"] = false,
-				["MainCannon2"] = false,
+				["SmallCannon"] = true,
+				["BigCannon"] = true,
+				["Flat Cannon"] = true,
+				["MainCannon2"] = true,
 				["Mortar2"] = true,
 				["MountedRocket"] = true
 			}
@@ -33,14 +33,28 @@ do
 		}
 	}
 
+	local shipSet = {}
+	local cannonToGroup = {}
 	local enabled = false
 	local cached = {}
-	local cannonToGroup = {}
 	local gui, btn
 
-	local function aAllowedShipSet()
-		local set = {}
+	local function aInit()
+		iMakeGui()
+		jHookButton()
+		cBuildCannonMap()
+		eRebuildCache()
+		kLoop()
 
+		if player:GetPropertyChangedSignal("Team") then
+			player:GetPropertyChangedSignal("Team"):Connect(function()
+				cached = {}
+			end)
+		end
+	end
+
+	local function bAllowedShipSet()
+		local set = {}
 		if not SelfTeamOnly then
 			for _, n in ipairs(shipList) do
 				set[n] = true
@@ -57,27 +71,25 @@ do
 			set["OrangeShip"] = true
 			set["GreenShip"] = true
 		else
-			for _, n in ipairs(shipList) do
-				set[n] = true
-			end
+			set["OrangeShip"] = true
+			set["GreenShip"] = true
 		end
 
 		return set
 	end
 
-	local function bBuildCannonMap()
-		local map = {}
+	local function cBuildCannonMap()
+		cannonToGroup = {}
 		for groupKey, group in pairs(cannonGroups) do
 			for cannonName, isOn in pairs(group.guns) do
 				if isOn then
-					map[cannonName] = groupKey
+					cannonToGroup[cannonName] = groupKey
 				end
 			end
 		end
-		cannonToGroup = map
 	end
 
-	local function cFindFireRemote(cannonInst)
+	local function dFindFireRemote(cannonInst)
 		if not cannonInst or not cannonInst:IsDescendantOf(workspace) then
 			return nil
 		end
@@ -87,33 +99,30 @@ do
 			return direct
 		end
 
-		local deep = cannonInst:FindFirstChild("FireCannon", true)
-		if deep and deep:IsA("RemoteEvent") then
-			return deep
+		local found = cannonInst:FindFirstChild("FireCannon", true)
+		if found and found:IsA("RemoteEvent") then
+			return found
 		end
 
 		return nil
 	end
 
-	local function dRebuildCache()
+	local function eRebuildCache()
 		local list = {}
 		local seen = {}
-		local shipSet = aAllowedShipSet()
+		shipSet = bAllowedShipSet()
 
 		for _, inst in ipairs(workspace:GetDescendants()) do
 			local groupKey = cannonToGroup[inst.Name]
 			if groupKey then
-				local fire = cFindFireRemote(inst)
+				local fire = dFindFireRemote(inst)
 				if fire then
 					local p = inst.Parent
 					while p and p ~= workspace do
 						if shipSet[p.Name] then
 							if not seen[fire] then
 								seen[fire] = true
-								local group = cannonGroups[groupKey]
-								if group and group.args then
-									list[#list + 1] = { r = fire, a = group.args }
-								end
+								list[#list + 1] = { r = fire, a = cannonGroups[groupKey].args }
 							end
 							break
 						end
@@ -126,7 +135,7 @@ do
 		cached = list
 	end
 
-	local function ePruneCache()
+	local function fPruneCache()
 		local alive = {}
 		for _, item in ipairs(cached) do
 			local r = item.r
@@ -136,12 +145,12 @@ do
 		end
 		cached = alive
 		if #cached == 0 then
-			dRebuildCache()
+			eRebuildCache()
 		end
 	end
 
-	local function fFireAll()
-		ePruneCache()
+	local function gFireAll()
+		fPruneCache()
 		for _, item in ipairs(cached) do
 			local r = item.r
 			if r and r.Parent and r:IsDescendantOf(workspace) then
@@ -152,7 +161,12 @@ do
 		end
 	end
 
-	local function gMakeGui()
+	local function hSetEnabled(v)
+		enabled = v
+		btn.Text = v and "funny: ON" or "funny: OFF"
+	end
+
+	function iMakeGui()
 		gui = Instance.new("ScreenGui")
 		gui.Name = "test"
 		gui.ResetOnSpawn = false
@@ -175,13 +189,13 @@ do
 		corner.Parent = btn
 	end
 
-	local function hHookButton()
+	function jHookButton()
 		local dragging = false
 		local dragStart
 		local startPos
 
 		btn.Activated:Connect(function()
-			jSetEnabled(not enabled)
+			hSetEnabled(not enabled)
 		end)
 
 		btn.InputBegan:Connect(function(input)
@@ -206,33 +220,16 @@ do
 		end)
 	end
 
-	local function iLoop()
+	function kLoop()
 		task.spawn(function()
 			while true do
 				if enabled then
-					fFireAll()
+					gFireAll()
 				end
 				task.wait(0.05)
 			end
 		end)
 	end
 
-	function jSetEnabled(v)
-		enabled = v
-		if btn then
-			btn.Text = v and "funny: ON" or "funny: OFF"
-		end
-	end
-
-	local function kInit()
-		bBuildCannonMap()
-		gMakeGui()
-		hHookButton()
-		dRebuildCache()
-		iLoop()
-
-		player:GetPropertyChangedSignal("Team"):Connect(function()
-			if SelfTeamOnly then
-				cached = {}
-			end
-		end)
+	aInit()
+end
