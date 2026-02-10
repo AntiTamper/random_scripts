@@ -1,13 +1,7 @@
 while true do
 	for _, v in ipairs(game:GetDescendants()) do
-		if v.Name == "HelicoperCommand" then
-			if v:IsA("RemoteEvent") then
-				v:FireServer("JumpedOutOfSeat")
-			elseif v:IsA("RemoteFunction") then
-				pcall(function()
-					v:InvokeServer("JumpedOutOfSeat")
-				end)
-			end
+		if v:IsA("RemoteEvent") and v.Name == "HelicopterCommand" then
+			v:FireServer({[1] = "JumpedOutOfSeat"})
 		end
 	end
 	task.wait(0.5)
