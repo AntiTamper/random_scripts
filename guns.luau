@@ -15,7 +15,7 @@ do
 	local p = { "OrangeShip", "GreenShip" }
 
 	local q = {
-		C1 = "0.09",
+		C1 = "0.05",
 		C2 = "0.1",
 		C1Move = "0.2",
 		F3 = "0.5"
