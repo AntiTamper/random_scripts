@@ -239,9 +239,9 @@ do
 			return btn
 		end
 
-		l = mk("test1")
-		m = mk("test2")
-		n = mk("test3")
+		l = mk("Super Cannon")
+		m = mk("Break cannon")
+		n = mk("Stop ships")
 
 		local dragging = false
 		local dragStart
